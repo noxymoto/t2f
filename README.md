@@ -179,6 +179,7 @@ Package metadata is stored under:
 ```
 
 This is intentionally small and simple right now. A central package index/registry is a natural next step, but the current flow is already enough to install and rebuild T2F programs as native commands.
+There is also a minimal stdlib that some of the programs use. But I prefer just exposing the native linux syscalls in the language directly.
 
 ## Notable Projects In This Repo
 

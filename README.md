@@ -15,7 +15,7 @@ It is designed around a few simple ideas:
 Today, T2F can compile to:
 
 - Linux x86_64 assembly
-- Windows x64 assembly
+- Windows x64 assembly*** (not well... most syscalls have not been translated to windows, but you can do basic programming.)
 
 It is not a production language yet. It is a fast-moving experimental systems language and runtime project.
 

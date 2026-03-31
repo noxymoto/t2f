@@ -1,0 +1,33 @@
+include "../std/fs.t2f"
+include "../std/net.t2f"
+
+let viewer_ids = array(128);
+let viewer_seen = array(128);
+let request_tick = 1;
+
+include "router.t2f"
+
+let server = net_setup_server_host("0.0.0.0", 3000);
+
+
+if (server == -1) {
+    print(111);
+    print(net_error());
+} else {
+    print(3000);
+
+    while (1) {
+        let client = net_accept(server);
+
+        if (client != -1) {
+            let request_size = net_read(client);
+
+            if (request_size != -1) {
+                request_tick = request_tick + 1;
+                route_request(client);
+            }
+
+            net_close(client);
+        }
+    }
+}

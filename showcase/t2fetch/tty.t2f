@@ -1,0 +1,63 @@
+// tty.t2f - styled terminal output helpers for microfetch
+
+let tty_buf = mem_alloc(256);
+
+fn tty_putc(ch) {
+    set_byte(tty_buf, 0, ch);
+    net_write(1, tty_buf, 1);
+}
+
+fn tty_nl() {
+    tty_putc(10);
+}
+
+fn tty_print(s) {
+    write_str(1, s);
+}
+
+fn tty_print_num(n) {
+    let len = int_to_buf(n, net_scratch_buf);
+    net_write(1, net_scratch_buf, len);
+}
+
+fn tty_clear() {
+    tty_print("\x1b[2J\x1b[H");
+}
+
+fn tty_repeat(ch, count) {
+    let i = 0;
+    while (i < count) {
+        tty_putc(ch);
+        i = i + 1;
+    }
+}
+
+fn tty_reset() {
+    tty_print("\x1b[0m");
+}
+
+fn tty_bold() {
+    tty_print("\x1b[1m");
+}
+
+fn tty_dim() {
+    tty_print("\x1b[2m");
+}
+
+fn tty_fg(code) {
+    tty_print("\x1b[");
+    tty_print_num(code);
+    tty_print("m");
+}
+
+fn tty_accent() {
+    tty_print("\x1b[38;5;215m");
+}
+
+fn tty_muted() {
+    tty_print("\x1b[38;5;246m");
+}
+
+fn tty_gold() {
+    tty_print("\x1b[38;5;221m");
+}

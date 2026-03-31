@@ -1,0 +1,18 @@
+// tmkdir.t2f - Create a directory
+let count = sys_argc();
+
+if (count < 2) {
+    print_str("Usage: tmkdir <dirname>");
+} else {
+    let dirname = sys_argv(1);
+    
+    // 493 is the integer for 0755 permissions (rwxr-xr-x)
+    let res = sys_mkdir(dirname, 493);
+
+    if (res == 0) {
+        print_str("Directory created.");
+    } else {
+        print_str("Error creating directory.");
+        print net_error(); // Prints Linux error (e.g., 17 means already exists)
+    }
+}

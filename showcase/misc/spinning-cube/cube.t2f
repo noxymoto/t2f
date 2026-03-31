@@ -1,0 +1,283 @@
+// cube.t2f - Spinning wireframe cube in the terminal
+// Demonstrates: include, fixed-point math, mem_alloc,
+//               string/buffer manipulation, direct syscalls
+//
+// Compile: t2fc cube.t2f -o cube
+// Run:     ./cube
+
+include "math.t2f"
+
+// --- Constants ---
+// Screen dimensions (terminal chars)
+let SCREEN_W = 60;
+let SCREEN_H = 30;
+let SCREEN_SIZE = 1800;       // 60 * 30
+
+// Cube half-size in fixed point (0.9 * 1000 = 900)
+let CUBE = 900;
+
+// Projection distance (perspective)
+let FOV = 2000;
+
+// Busy-wait spin count per frame (~controls speed, tune to taste)
+let SPIN_DELAY = 80000000;
+
+// ANSI escape bytes (decimal, no octal support yet)
+// ESC = 27, '[' = 91, 'H' = 72, '2' = 50, 'J' = 74
+let ESC = 27;
+
+// --- Buffers ---
+let screen  = mem_alloc(1800);   // char per cell
+let zbuffer = array(1800);       // fixed-point depth per cell (scaled)
+let esc_buf = mem_alloc(16);     // scratch for escape sequences
+
+// --- Write a single byte to stdout ---
+fn write_byte(b) {
+    set_byte(esc_buf, 0, b);
+    net_write(1, esc_buf, 1);
+}
+
+// --- Clear terminal: ESC[2J ESC[H ---
+fn clear_screen() {
+    // ESC [ 2 J
+    write_byte(27);
+    write_byte(91);
+    write_byte(50);
+    write_byte(74);
+    // ESC [ H
+    write_byte(27);
+    write_byte(91);
+    write_byte(72);
+}
+
+// --- Flush the screen buffer to stdout ---
+fn flush_screen() {
+    // We write row by row, appending a newline after each
+    let row = 0;
+    let line_buf = mem_alloc(64);
+    while (row < SCREEN_H) {
+        let col = 0;
+        while (col < SCREEN_W) {
+            let idx = row * SCREEN_W + col;
+            let pixel_byte = get_byte(screen, idx);
+            set_byte(line_buf, col, pixel_byte);
+            col = col + 1;
+        }
+        // newline at end of row
+        set_byte(line_buf, SCREEN_W, 10);
+        net_write(1, line_buf, SCREEN_W + 1);
+        row = row + 1;
+    }
+    mem_free(line_buf, 64);
+}
+
+// --- Clear screen and zbuffer ---
+fn clear_buffers() {
+    let i = 0;
+    while (i < SCREEN_SIZE) {
+        set_byte(screen, i, 32);    // space
+        mem_set(zbuffer, i, 0);
+        i = i + 1;
+    }
+}
+
+// --- Global current draw character ---
+// We set this before calling plot so we don't have to pass it
+let draw_char = 42;
+
+// --- Project a 3D fixed-point point onto the 2D screen ---
+// x3,y3,z3 are in fixed-point (*1000)
+// Reads draw_char global for the character to plot
+fn plot(x3, y3, z3) {
+    // Perspective divide: sx = x3 * FOV / (z3 + FOV*3)
+    let denom = z3 + 6000;
+    if (denom < 100) {
+        return 0;
+    }
+    let sx = (x3 * FOV) / denom;
+    let sy = (y3 * FOV) / denom;
+
+    // Map to screen coords (centre at SCREEN_W/2, SCREEN_H/2)
+    let px = sx / 30 + SCREEN_W / 2;
+    let py = 0 - (sy / 20) + SCREEN_H / 2;
+
+    if (px < 0) { return 0; }
+    if (py < 0) { return 0; }
+    if (px > SCREEN_W - 1) { return 0; }
+    if (py > SCREEN_H - 1) { return 0; }
+
+    let idx = py * SCREEN_W + px;
+
+    // Depth test: only draw if closer than what's already there
+    let cur_depth = mem_get(zbuffer, idx);
+    if (z3 > cur_depth) {
+        set_byte(screen, idx, draw_char);
+        mem_set(zbuffer, idx, z3);
+    }
+    return 1;
+}
+
+// --- Rotate a point around X and Y axes ---
+// Input/output all fixed-point (*1000)
+// rx = rotation around X axis (degrees)
+// ry = rotation around Y axis (degrees)
+fn rotate_x(y, z, rx) {
+    // y' = y*cos - z*sin
+    return fp_mul(y, fp_cos(rx)) - fp_mul(z, fp_sin(rx));
+}
+
+fn rotate_x_z(y, z, rx) {
+    // z' = y*sin + z*cos
+    return fp_mul(y, fp_sin(rx)) + fp_mul(z, fp_cos(rx));
+}
+
+fn rotate_y(x, z, ry) {
+    // x' = x*cos + z*sin
+    return fp_mul(x, fp_cos(ry)) + fp_mul(z, fp_sin(ry));
+}
+
+fn rotate_y_z(x, z, ry) {
+    // z' = -x*sin + z*cos
+    return 0 - fp_mul(x, fp_sin(ry)) + fp_mul(z, fp_cos(ry));
+}
+
+// --- Draw a line between two 3D points ---
+// Set draw_char before calling this
+fn draw_line(x0, y0, z0, x1, y1, z1) {
+    let steps = 40;
+    let i = 0;
+    while (i <= steps) {
+        let t = i * 1000 / steps;
+        let xi = x0 + (x1 - x0) * t / 1000;
+        let yi = y0 + (y1 - y0) * t / 1000;
+        let zi = z0 + (z1 - z0) * t / 1000;
+        plot(xi, yi, zi);
+        i = i + 1;
+    }
+}
+
+// --- Draw all 12 edges of the cube ---
+// Vertices of a cube (fixed-point, size CUBE):
+//   0: (-C,-C,-C)  1: ( C,-C,-C)
+//   2: ( C, C,-C)  3: (-C, C,-C)
+//   4: (-C,-C, C)  5: ( C,-C, C)
+//   6: ( C, C, C)  7: (-C, C, C)
+fn draw_cube(rx, ry) {
+    let C = CUBE;
+
+    // Build the 8 rotated vertices into arrays
+    let vx = array(8);
+    let vy = array(8);
+    let vz = array(8);
+
+    // Raw vertex coords
+    let raw_x = array(8);
+    let raw_y = array(8);
+    let raw_z = array(8);
+
+    mem_set(raw_x, 0, 0 - C); mem_set(raw_y, 0, 0 - C); mem_set(raw_z, 0, 0 - C);
+    mem_set(raw_x, 1,     C); mem_set(raw_y, 1, 0 - C); mem_set(raw_z, 1, 0 - C);
+    mem_set(raw_x, 2,     C); mem_set(raw_y, 2,     C); mem_set(raw_z, 2, 0 - C);
+    mem_set(raw_x, 3, 0 - C); mem_set(raw_y, 3,     C); mem_set(raw_z, 3, 0 - C);
+    mem_set(raw_x, 4, 0 - C); mem_set(raw_y, 4, 0 - C); mem_set(raw_z, 4,     C);
+    mem_set(raw_x, 5,     C); mem_set(raw_y, 5, 0 - C); mem_set(raw_z, 5,     C);
+    mem_set(raw_x, 6,     C); mem_set(raw_y, 6,     C); mem_set(raw_z, 6,     C);
+    mem_set(raw_x, 7, 0 - C); mem_set(raw_y, 7,     C); mem_set(raw_z, 7,     C);
+
+    // Rotate all 8 vertices
+    let vi = 0;
+    while (vi < 8) {
+        let rx0 = mem_get(raw_x, vi);
+        let ry0 = mem_get(raw_y, vi);
+        let rz0 = mem_get(raw_z, vi);
+
+        // Rotate around Y axis first
+        let x1 = rotate_y(rx0, rz0, ry);
+        let z1 = rotate_y_z(rx0, rz0, ry);
+
+        // Then rotate around X axis
+        let y2 = rotate_x(ry0, z1, rx);
+        let z2 = rotate_x_z(ry0, z1, rx);
+
+        // Translate away from camera (push into screen)
+        mem_set(vx, vi, x1);
+        mem_set(vy, vi, y2);
+        mem_set(vz, vi, z2 + 3000);   // z offset = 3.0 units
+        vi = vi + 1;
+    }
+
+    // Draw 12 edges — set draw_char before each group
+    // '-' = 45, '|' = 124, '+' = 43
+
+    // Bottom face: 0-1, 1-2, 2-3, 3-0
+    draw_char = 45;
+    draw_line(mem_get(vx,0),mem_get(vy,0),mem_get(vz,0), mem_get(vx,1),mem_get(vy,1),mem_get(vz,1));
+    draw_char = 124;
+    draw_line(mem_get(vx,1),mem_get(vy,1),mem_get(vz,1), mem_get(vx,2),mem_get(vy,2),mem_get(vz,2));
+    draw_char = 45;
+    draw_line(mem_get(vx,2),mem_get(vy,2),mem_get(vz,2), mem_get(vx,3),mem_get(vy,3),mem_get(vz,3));
+    draw_char = 124;
+    draw_line(mem_get(vx,3),mem_get(vy,3),mem_get(vz,3), mem_get(vx,0),mem_get(vy,0),mem_get(vz,0));
+
+    // Top face: 4-5, 5-6, 6-7, 7-4
+    draw_char = 45;
+    draw_line(mem_get(vx,4),mem_get(vy,4),mem_get(vz,4), mem_get(vx,5),mem_get(vy,5),mem_get(vz,5));
+    draw_char = 124;
+    draw_line(mem_get(vx,5),mem_get(vy,5),mem_get(vz,5), mem_get(vx,6),mem_get(vy,6),mem_get(vz,6));
+    draw_char = 45;
+    draw_line(mem_get(vx,6),mem_get(vy,6),mem_get(vz,6), mem_get(vx,7),mem_get(vy,7),mem_get(vz,7));
+    draw_char = 124;
+    draw_line(mem_get(vx,7),mem_get(vy,7),mem_get(vz,7), mem_get(vx,4),mem_get(vy,4),mem_get(vz,4));
+
+    // Verticals: 0-4, 1-5, 2-6, 3-7
+    draw_char = 43;
+    draw_line(mem_get(vx,0),mem_get(vy,0),mem_get(vz,0), mem_get(vx,4),mem_get(vy,4),mem_get(vz,4));
+    draw_line(mem_get(vx,1),mem_get(vy,1),mem_get(vz,1), mem_get(vx,5),mem_get(vy,5),mem_get(vz,5));
+    draw_line(mem_get(vx,2),mem_get(vy,2),mem_get(vz,2), mem_get(vx,6),mem_get(vy,6),mem_get(vz,6));
+    draw_line(mem_get(vx,3),mem_get(vy,3),mem_get(vz,3), mem_get(vx,7),mem_get(vy,7),mem_get(vz,7));
+
+    // Corners get '@' = 64
+    draw_char = 64;
+    plot(mem_get(vx,0),mem_get(vy,0),mem_get(vz,0)+1);
+    plot(mem_get(vx,1),mem_get(vy,1),mem_get(vz,1)+1);
+    plot(mem_get(vx,2),mem_get(vy,2),mem_get(vz,2)+1);
+    plot(mem_get(vx,3),mem_get(vy,3),mem_get(vz,3)+1);
+    plot(mem_get(vx,4),mem_get(vy,4),mem_get(vz,4)+1);
+    plot(mem_get(vx,5),mem_get(vy,5),mem_get(vz,5)+1);
+    plot(mem_get(vx,6),mem_get(vy,6),mem_get(vz,6)+1);
+    plot(mem_get(vx,7),mem_get(vy,7),mem_get(vz,7)+1);
+
+    mem_free(vx, 64);
+    mem_free(vy, 64);
+    mem_free(vz, 64);
+    mem_free(raw_x, 64);
+    mem_free(raw_y, 64);
+    mem_free(raw_z, 64);
+}
+
+// --- Busy-wait delay ---
+fn delay() {
+    let i = 0;
+    while (i < SPIN_DELAY) {
+        i = i + 1;
+    }
+}
+
+// --- Main loop ---
+let angle_x = 0;
+let angle_y = 0;
+
+while (1) {
+    clear_buffers();
+    draw_cube(angle_x, angle_y);
+    clear_screen();
+    flush_screen();
+
+    angle_x = angle_x + 2;
+    angle_y = angle_y + 3;
+
+    if (angle_x > 359) { angle_x = 0; }
+    if (angle_y > 359) { angle_y = 0; }
+
+    delay();
+}

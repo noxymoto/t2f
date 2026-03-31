@@ -1,0 +1,16 @@
+// trm.t2f - Remove a file
+let count = sys_argc();
+
+if (count < 2) {
+    print_str("Usage: trm <filename>");
+} else {
+    let filename = sys_argv(1);
+    let res = sys_unlink(filename);
+
+    if (res == 0) {
+        print_str("File deleted.");
+    } else {
+        print_str("Error deleting file.");
+        print net_error(); // Prints Linux error (e.g., 2 means not found)
+    }
+}

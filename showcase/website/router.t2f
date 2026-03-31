@@ -1,0 +1,196 @@
+fn send_static_page(client, path) {
+    let size = fs_load_buffer(path);
+    if (size == -1) {
+        return -1;
+    }
+
+    net_send_ok(client, size);
+    net_send_buf(client, size);
+    return 0;
+}
+
+fn copy_string(src, dst) {
+    let i = 0;
+    let len = str_len(src);
+
+    while (i <= len) {
+        let ch = get_byte(src, i);
+        set_byte(dst, i, ch);
+        i = i + 1;
+    }
+
+    return dst;
+}
+
+fn ensure_viewer_buffer(slot) {
+    let ptr = viewer_ids[slot];
+    if (ptr == 0) {
+        ptr = mem_alloc(64);
+        viewer_ids[slot] = ptr;
+    }
+    return ptr;
+}
+
+fn find_viewer_slot(id) {
+    let i = 0;
+
+    while (i < viewer_ids.len) {
+        let ptr = viewer_ids[i];
+        if (ptr != 0) {
+            if (str_cmp(ptr, id) == 1) {
+                return i;
+            }
+        }
+        i = i + 1;
+    }
+
+    return -1;
+}
+
+fn active_cutoff(now) {
+    return now - 3;
+}
+
+fn count_active_viewers(now) {
+    let i = 0;
+    let total = 0;
+    let cutoff = active_cutoff(now);
+
+    while (i < viewer_ids.len) {
+        let ptr = viewer_ids[i];
+        if (ptr != 0) {
+            let seen = viewer_seen[i];
+            if (seen >= cutoff) {
+                total = total + 1;
+            }
+        }
+        i = i + 1;
+    }
+
+    return total;
+}
+
+fn touch_viewer(id, now) {
+    let slot = find_viewer_slot(id);
+    if (slot != -1) {
+        viewer_seen[slot] = now;
+        return slot;
+    }
+
+    let i = 0;
+    let cutoff = active_cutoff(now);
+    let reusable = -1;
+
+    while (i < viewer_ids.len) {
+        let ptr = viewer_ids[i];
+        if (ptr == 0) {
+            reusable = i;
+            i = viewer_ids.len;
+        } else {
+            let seen = viewer_seen[i];
+            if (seen < cutoff) {
+                reusable = i;
+                i = viewer_ids.len;
+            } else {
+                i = i + 1;
+            }
+        }
+    }
+
+    if (reusable == -1) {
+        return -1;
+    }
+
+    let dst = ensure_viewer_buffer(reusable);
+    copy_string(id, dst);
+    viewer_seen[reusable] = now;
+    return reusable;
+}
+
+fn leave_viewer(id) {
+    let slot = find_viewer_slot(id);
+    if (slot != -1) {
+        viewer_seen[slot] = 0;
+    }
+    return slot;
+}
+
+fn send_counter_value(client, viewers) {
+    let digits_len = int_to_buf(viewers, net_scratch_buf);
+    net_send_ok(client, digits_len);
+    net_write(client, net_scratch_buf, digits_len);
+    return 0;
+}
+
+fn send_counter_page(client, viewers) {
+    let prefix = "<!doctype html><html><head><title>T2F Counter</title><meta name='viewport' content='width=device-width,initial-scale=1'><style>:root{--bg:#f3efe6;--panel:#fff9ee;--ink:#1f1a17;--muted:#6a5d52;--accent:#c96f2d;--accent-soft:#f0c7a8;--line:#dfd2c1;}*{box-sizing:border-box}body{margin:0;font-family:Georgia,'Times New Roman',serif;background:radial-gradient(circle at top,#fff8ef 0,#f3efe6 55%,#e9e0d2 100%);color:var(--ink)}main{max-width:960px;margin:0 auto;padding:56px 20px 72px}section{background:linear-gradient(180deg,rgba(255,249,238,.96),rgba(248,240,228,.92));border:1px solid var(--line);border-radius:28px;padding:32px;box-shadow:0 20px 50px rgba(80,52,22,.12)}.eyebrow{display:inline-block;padding:8px 12px;border-radius:999px;background:var(--accent-soft);color:#6b3614;font-size:12px;letter-spacing:.16em;text-transform:uppercase}.hero{display:grid;gap:20px}.hero h1{margin:0;font-size:clamp(40px,7vw,84px);line-height:.92;letter-spacing:-.05em}.hero p{margin:0;max-width:640px;font-size:18px;line-height:1.6;color:var(--muted)}.metrics{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:18px;margin-top:28px}.card{padding:22px;border-radius:22px;background:rgba(255,255,255,.7);border:1px solid rgba(201,111,45,.18)}.label{font-size:12px;letter-spacing:.18em;text-transform:uppercase;color:var(--muted)}.value{margin-top:10px;font-size:clamp(44px,8vw,72px);line-height:.9;color:var(--accent)}.footer{display:flex;flex-wrap:wrap;gap:14px;margin-top:26px}.link{display:inline-flex;align-items:center;gap:10px;padding:12px 16px;border-radius:999px;background:#201814;color:#fff7ef;text-decoration:none}.subtle{display:inline-flex;align-items:center;padding:12px 16px;border-radius:999px;border:1px solid var(--line);color:var(--ink);text-decoration:none}.pulse{display:inline-block;width:10px;height:10px;border-radius:50%;background:var(--accent);box-shadow:0 0 0 0 rgba(201,111,45,.5);animation:pulse 1.8s infinite}.meta{margin-top:16px;font-size:14px;color:var(--muted)}@keyframes pulse{0%{box-shadow:0 0 0 0 rgba(201,111,45,.45)}70%{box-shadow:0 0 0 16px rgba(201,111,45,0)}100%{box-shadow:0 0 0 0 rgba(201,111,45,0)}}@media (max-width:640px){main{padding:28px 14px 42px}section{padding:22px;border-radius:22px}}</style></head><body><main><section><span class='eyebrow'>Native T2F Demo</span><div class='hero'><h1>Live viewer tracking with raw sockets.</h1><p>This page is being served directly by the T2F Linux backend. Each tab heartbeats into the server and the count below updates from the runtime.</p></div><div class='metrics'><div class='card'><div class='label'>Active viewers</div><div class='value' id='viewer-count'>";
+    let suffix = "</div></div><div class='card'><div class='label'>Transport</div><div class='meta'><span class='pulse'></span> HTTP over native Linux syscalls</div><div class='meta'>Routing, static assets, and dynamic responses are all driven by your compiler output.</div></div></div><div class='footer'><a class='link' href='/about'>About this demo</a><a class='subtle' href='/count'>Raw count endpoint</a></div></section></main><script>let tabId='';let tracked=false;const channel=new BroadcastChannel('t2f-viewers');function gen(){return 'v'+Math.random().toString(36).slice(2)+Date.now().toString(36);}async function hit(path){let r=await fetch(path+'/'+tabId+'?t='+Date.now(),{cache:'no-store'});let t=await r.text();document.getElementById('viewer-count').textContent=t;}function claim(){tabId=gen();channel.postMessage('hello:'+tabId);setTimeout(function(){tracked=true;hit('/join');},80);}channel.onmessage=function(e){if(e.data==='hello:'+tabId){tabId=gen();claim();}};window.addEventListener('pageshow',function(){tracked=false;claim();});claim();setInterval(function(){if(tracked){hit('/pulse');}},1000);</script></body></html>";
+
+    let prefix_len = str_len(prefix);
+    let digits_len = int_to_buf(viewers, net_scratch_buf);
+    let suffix_len = str_len(suffix);
+    let body_len = prefix_len + digits_len + suffix_len;
+
+    net_send_ok(client, body_len);
+    write_str(client, prefix);
+    net_write(client, net_scratch_buf, digits_len);
+    write_str(client, suffix);
+    return 0;
+}
+
+fn handle_join(client, now) {
+    let copied = net_copy_path_tail("/join/", net_scratch_buf);
+    if (copied == -1) {
+        return send_counter_value(client, count_active_viewers(now));
+    }
+
+    touch_viewer(net_scratch_buf, now);
+    return send_counter_value(client, count_active_viewers(now));
+}
+
+fn handle_pulse(client, now) {
+    let copied = net_copy_path_tail("/pulse/", net_scratch_buf);
+    if (copied == -1) {
+        return send_counter_value(client, count_active_viewers(now));
+    }
+
+    touch_viewer(net_scratch_buf, now);
+    return send_counter_value(client, count_active_viewers(now));
+}
+
+fn handle_leave(client, now) {
+    let copied = net_copy_path_tail("/leave/", net_scratch_buf);
+    if (copied != -1) {
+        leave_viewer(net_scratch_buf);
+    }
+
+    return send_counter_value(client, count_active_viewers(now));
+}
+
+fn route_request(client) {
+    if (net_path_eq("/about")) {
+        return send_static_page(client, "static/about.html");
+    }
+
+    if (net_path_eq("/")) {
+        return send_counter_page(client, count_active_viewers(request_tick));
+    }
+
+    if (net_path_eq("/count")) {
+        return send_counter_value(client, count_active_viewers(request_tick));
+    }
+
+    if (net_match_path("/join/")) {
+        return handle_join(client, request_tick);
+    }
+
+    if (net_match_path("/pulse/")) {
+        return handle_pulse(client, request_tick);
+    }
+
+    if (net_match_path("/leave/")) {
+        return handle_leave(client, request_tick);
+    }
+
+    return send_static_page(client, "static/404.html");
+}

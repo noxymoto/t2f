@@ -201,6 +201,7 @@ It currently shows:
 - battery when available
 
 It is a good example of the kind of utility T2F can already build well.
+It is 17x faster than fastfetch, though this is kind of meaningless. that was only the case when 1000 instances were ran simultaneously and benchmarked. Even so, it's quick. 
 
 ### `microsh`
 

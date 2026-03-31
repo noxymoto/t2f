@@ -1,0 +1,31 @@
+// t2f Standard Network Library
+// High-level wrappers for socket operations
+
+// net_serve(port) -> fd
+// Creates, binds, and listens on a port.
+fn net_setup_server_host(host, port) {
+    let s = net_socket();
+    if (s == -1) { return -1; }
+
+    let reuse = net_reuse_addr(s);
+    if (reuse == -1) { return -1; }
+    
+    let b = net_bind(s, host, port);
+    if (b == -1) { return -1; }
+    
+    let l = net_listen(s);
+    if (l == -1) { return -1; }
+    
+    return s;
+}
+
+fn net_setup_server(port) {
+    return net_setup_server_host("0.0.0.0", port);
+}
+
+// net_send_ok(client, body_size)
+// Helper to send 200 OK headers with content length.
+fn net_send_ok(client, body_size) {
+    net_respond_headers(client, body_size);
+}
+    

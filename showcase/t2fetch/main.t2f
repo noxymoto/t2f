@@ -1,0 +1,352 @@
+include "../std/fs.t2f"
+include "tty.t2f"
+include "readers.t2f"
+
+let user_buf = mem_alloc(128);
+let host_name_buf = mem_alloc(256);
+let host_buf = mem_alloc(256);
+let os_buf = mem_alloc(256);
+let os_id_buf = mem_alloc(64);
+let kernel_buf = mem_alloc(256);
+let cpu_buf = mem_alloc(256);
+let mem_total_buf = mem_alloc(64);
+let mem_avail_buf = mem_alloc(64);
+let battery_cap_buf = mem_alloc(64);
+let battery_status_buf = mem_alloc(64);
+let uptime_buf = mem_alloc(128);
+let env_buf = mem_alloc(128);
+let shell_buf = mem_alloc(128);
+
+fn print_gap() {
+    tty_print("      ");
+}
+
+fn print_backstep(count) {
+    while (count > 0) {
+        tty_print("\b");
+        count = count - 1;
+    }
+}
+
+fn print_bg_block(color, width) {
+    tty_print("\x1b[48;5;");
+    tty_print_num(color);
+    tty_print("m");
+    while (width > 0) {
+        tty_print(" ");
+        width = width - 1;
+    }
+    tty_print("\x1b[0m");
+}
+
+
+fn print_color_swatches(width) {
+    print_bg_block(52, width);  tty_print(" ");
+    print_bg_block(94, width);  tty_print(" ");
+    print_bg_block(130, width); tty_print(" ");
+    print_bg_block(22, width);  tty_print(" ");
+    print_bg_block(24, width);  tty_print(" ");
+    print_bg_block(18, width);  tty_print(" ");
+    print_bg_block(90, width);
+    tty_nl();
+}
+
+fn print_color_swatches_light(width) {
+    print_bg_block(196, width); tty_print(" ");
+    print_bg_block(202, width); tty_print(" ");
+    print_bg_block(220, width); tty_print(" ");
+    print_bg_block(46, width);  tty_print(" ");
+    print_bg_block(51, width);  tty_print(" ");
+    print_bg_block(21, width);  tty_print(" ");
+    print_bg_block(201, width);
+    tty_nl();
+}
+
+
+fn print_indent(count) {
+    while (count > 0) {
+        tty_print(" ");
+        count = count - 1;
+    }
+}
+
+fn print_header_line() {
+    tty_bold();
+    tty_print(host_buf);
+    tty_reset();
+    tty_nl();
+}
+
+fn print_rule() {
+    tty_muted();
+    tty_repeat(45, 25);
+    tty_reset();
+    tty_nl();
+}
+
+fn print_key_prefix(key) {
+    tty_gold();
+    tty_print(key);
+    let width = str_len(key);
+    while (width < 12) {
+        tty_print(" ");
+        width = width + 1;
+    }
+    tty_reset();
+    tty_print(": ");
+}
+
+fn print_key_value(key, value) {
+    print_key_prefix(key);
+    tty_bold();
+    tty_print(value);
+    tty_reset();
+    tty_nl();
+}
+
+fn append_text(dst, offset, text) {
+    let i = 0;
+    while (1) {
+        let ch = get_byte(text, i);
+        if (ch == 0) {
+            set_byte(dst, offset, 0);
+            return offset;
+        }
+        set_byte(dst, offset, ch);
+        offset = offset + 1;
+        i = i + 1;
+    }
+}
+
+fn append_num(dst, offset, value) {
+    let len = int_to_buf(value, net_scratch_buf);
+    let i = 0;
+    while (i < len) {
+        set_byte(dst, offset, get_byte(net_scratch_buf, i));
+        offset = offset + 1;
+        i = i + 1;
+    }
+    set_byte(dst, offset, 0);
+    return offset;
+}
+
+fn build_uptime_text(minutes, dst) {
+    let hours = minutes / 60;
+    let mins = minutes - (hours * 60);
+    let at = 0;
+
+    if (hours > 0) {
+        at = append_num(dst, at, hours);
+        if (hours == 1) {
+            at = append_text(dst, at, " hour");
+        } else {
+            at = append_text(dst, at, " hours");
+        }
+        if (mins > 0) {
+            at = append_text(dst, at, ", ");
+        }
+    }
+
+    at = append_num(dst, at, mins);
+    if (mins == 1) {
+        append_text(dst, at, " min");
+    } else {
+        append_text(dst, at, " mins");
+    }
+    return dst;
+}
+
+fn parse_decimal(text) {
+    return str_to_int(text);
+}
+
+fn print_memory_line() {
+    let total_kb = parse_decimal(mem_total_buf);
+    let avail_kb = parse_decimal(mem_avail_buf);
+    let used_kb = total_kb - avail_kb;
+
+    print_key_prefix("memory");
+    tty_bold();
+    tty_print_num(used_kb / 1024);
+    tty_print(" MiB / ");
+    tty_print_num(total_kb / 1024);
+    tty_print(" MiB");
+    tty_reset();
+    tty_nl();
+}
+
+fn print_battery_line() {
+    print_key_prefix("battery");
+    tty_bold();
+    tty_print(battery_cap_buf);
+    if (str_cmp(battery_cap_buf, "n/a") != 1) {
+        tty_print("%");
+        tty_print(" [");
+        tty_print(battery_status_buf);
+        tty_print("]");
+    }
+    tty_reset();
+    tty_nl();
+}
+
+fn print_disk_line() {
+    let total_bytes = disk_total("/");
+    let avail_bytes = disk_avail("/");
+
+    print_key_prefix("disk");
+    tty_bold();
+    if (total_bytes == -1) {
+        tty_print("n/a");
+    } else {
+        let used_bytes = total_bytes - avail_bytes;
+        tty_print_num(used_bytes / 1024 / 1024 / 1024);
+        tty_print(" GiB / ");
+        tty_print_num(total_bytes / 1024 / 1024 / 1024);
+        tty_print(" GiB");
+    }
+    tty_reset();
+    tty_nl();
+}
+
+fn print_penguin_art(line) {
+    tty_accent();
+    tty_bold();
+//if (line == 0) { tty_print("          .--.               "); }
+//if (line == 1) { tty_print("         |o_o |              "); }
+//if (line == 2) { tty_print("         |:_/ |              "); }
+//if (line == 3) { tty_print("        //   \\\\             "); }
+//if (line == 4) { tty_print("       (|     | )            "); }
+//if (line == 5) { tty_print("      /|\\\\_ _/|\\\\           "); }
+//if (line == 6) { tty_print("       \\__)=(__/             "); }
+//    if (line == 7) { tty_print("                             "); }
+//    if (line == 8) { tty_print("                               "); }
+//    if (line == 9) { tty_print("                               "); }
+//    if (line == 10) { tty_print("                               "); }
+//    tty_reset();
+}
+
+fn print_logo_line(line) {
+    print_penguin_art(line);
+}
+
+fn print_info_line(line) {
+    if (line == 0) {
+        print_indent(0);
+        print_header_line();
+    }
+    if (line == 1) {
+        print_indent(0);
+        print_rule();
+    }
+    if (line == 2) {
+        print_indent(0);
+        print_key_value("os", os_buf);
+    }
+    if (line == 3) {
+        print_indent(0);
+        print_key_value("environment", env_buf);
+    }
+    if (line == 4) {
+        print_indent(0);
+        print_key_value("kernel", kernel_buf);
+    }
+    if (line == 5) {
+        print_indent(0);
+        print_key_value("uptime", uptime_buf);
+    }
+    if (line == 6) {
+        print_indent(0);
+        print_key_value("cpu", cpu_buf);
+    }
+    if (line == 7) {
+        print_indent(0);
+        print_key_value("shell", shell_buf);
+    }
+    if (line == 8) {
+        print_indent(0);
+        print_memory_line();
+    }
+    if (line == 9) {
+        print_indent(0);
+        print_disk_line();
+    }
+    if (line == 10) {
+        print_indent(0);
+        print_battery_line();
+     //   tty_nl();
+    }
+   
+
+    if (line == 11) {
+    tty_nl();
+          print_indent(6);
+        print_color_swatches(4);
+        print_indent(10);
+        print_color_swatches_light(3);
+        print_indent(14);
+        print_color_swatches(2);
+       
+            print_indent(18);
+              print_color_swatches_light(1);
+             print_indent(14);
+               print_color_swatches(2);
+                print_indent(10);
+               print_color_swatches_light(3);
+              
+            print_indent(6);
+               print_color_swatches(4);
+              
+          
+    }
+
+
+}
+
+
+tty_clear();
+tty_print("");
+tty_nl();
+
+extract_username(user_buf);
+if (buf_is_empty(user_buf)) {
+    copy_cstr("user", user_buf);
+}
+
+extract_hostname(host_name_buf);
+if (buf_is_empty(host_name_buf)) {
+    copy_cstr("computer", host_name_buf);
+}
+
+copy_cstr(user_buf, host_buf);
+let host_at = str_len(host_buf);
+set_byte(host_buf, host_at, 64);
+set_byte(host_buf, host_at + 1, 0);
+append_text(host_buf, host_at + 1, host_name_buf);
+
+extract_os_pretty_name(os_buf);
+extract_os_id(os_id_buf);
+extract_kernel(kernel_buf);
+extract_cpu_model(cpu_buf);
+extract_shell_name(shell_buf);
+extract_mem_total(mem_total_buf);
+extract_mem_available(mem_avail_buf);
+extract_battery_capacity(battery_cap_buf);
+extract_battery_status(battery_status_buf);
+
+build_uptime_text(extract_uptime_minutes(), uptime_buf);
+if (is_wsl_kernel()) {
+    copy_cstr("Windows Subsystem for Linux", env_buf);
+} else {
+    copy_cstr("Linux", env_buf);
+}
+
+let line = 0;
+while (line < 14) {
+    print_logo_line(line);
+    print_gap();
+    print_info_line(line);
+    if (line > 11) {
+        tty_nl();
+    }
+    line = line + 1;
+}

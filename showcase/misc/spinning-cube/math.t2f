@@ -1,0 +1,137 @@
+// math.t2f - Fixed point math library for t2f
+// All values scaled by 1000 (so 1.0 = 1000, -1.0 = -1000)
+// sin/cos tables cover 0..359 degrees
+
+// Fixed-point sine table (degrees 0-89, scaled by 1000)
+// Full sin(x) computed via quadrant mirroring in fp_sin
+let _sin_table = array(90);
+mem_set(_sin_table, 0, 0);
+mem_set(_sin_table, 1, 17);
+mem_set(_sin_table, 2, 35);
+mem_set(_sin_table, 3, 52);
+mem_set(_sin_table, 4, 70);
+mem_set(_sin_table, 5, 87);
+mem_set(_sin_table, 6, 105);
+mem_set(_sin_table, 7, 122);
+mem_set(_sin_table, 8, 139);
+mem_set(_sin_table, 9, 156);
+mem_set(_sin_table, 10, 174);
+mem_set(_sin_table, 11, 191);
+mem_set(_sin_table, 12, 208);
+mem_set(_sin_table, 13, 225);
+mem_set(_sin_table, 14, 242);
+mem_set(_sin_table, 15, 259);
+mem_set(_sin_table, 16, 276);
+mem_set(_sin_table, 17, 292);
+mem_set(_sin_table, 18, 309);
+mem_set(_sin_table, 19, 326);
+mem_set(_sin_table, 20, 342);
+mem_set(_sin_table, 21, 358);
+mem_set(_sin_table, 22, 375);
+mem_set(_sin_table, 23, 391);
+mem_set(_sin_table, 24, 407);
+mem_set(_sin_table, 25, 423);
+mem_set(_sin_table, 26, 438);
+mem_set(_sin_table, 27, 454);
+mem_set(_sin_table, 28, 469);
+mem_set(_sin_table, 29, 485);
+mem_set(_sin_table, 30, 500);
+mem_set(_sin_table, 31, 515);
+mem_set(_sin_table, 32, 530);
+mem_set(_sin_table, 33, 545);
+mem_set(_sin_table, 34, 559);
+mem_set(_sin_table, 35, 574);
+mem_set(_sin_table, 36, 588);
+mem_set(_sin_table, 37, 602);
+mem_set(_sin_table, 38, 616);
+mem_set(_sin_table, 39, 629);
+mem_set(_sin_table, 40, 643);
+mem_set(_sin_table, 41, 656);
+mem_set(_sin_table, 42, 669);
+mem_set(_sin_table, 43, 682);
+mem_set(_sin_table, 44, 695);
+mem_set(_sin_table, 45, 707);
+mem_set(_sin_table, 46, 719);
+mem_set(_sin_table, 47, 731);
+mem_set(_sin_table, 48, 743);
+mem_set(_sin_table, 49, 755);
+mem_set(_sin_table, 50, 766);
+mem_set(_sin_table, 51, 777);
+mem_set(_sin_table, 52, 788);
+mem_set(_sin_table, 53, 799);
+mem_set(_sin_table, 54, 809);
+mem_set(_sin_table, 55, 819);
+mem_set(_sin_table, 56, 829);
+mem_set(_sin_table, 57, 839);
+mem_set(_sin_table, 58, 848);
+mem_set(_sin_table, 59, 857);
+mem_set(_sin_table, 60, 866);
+mem_set(_sin_table, 61, 875);
+mem_set(_sin_table, 62, 883);
+mem_set(_sin_table, 63, 891);
+mem_set(_sin_table, 64, 899);
+mem_set(_sin_table, 65, 906);
+mem_set(_sin_table, 66, 914);
+mem_set(_sin_table, 67, 921);
+mem_set(_sin_table, 68, 927);
+mem_set(_sin_table, 69, 934);
+mem_set(_sin_table, 70, 940);
+mem_set(_sin_table, 71, 946);
+mem_set(_sin_table, 72, 951);
+mem_set(_sin_table, 73, 956);
+mem_set(_sin_table, 74, 961);
+mem_set(_sin_table, 75, 966);
+mem_set(_sin_table, 76, 970);
+mem_set(_sin_table, 77, 974);
+mem_set(_sin_table, 78, 978);
+mem_set(_sin_table, 79, 982);
+mem_set(_sin_table, 80, 985);
+mem_set(_sin_table, 81, 988);
+mem_set(_sin_table, 82, 990);
+mem_set(_sin_table, 83, 993);
+mem_set(_sin_table, 84, 995);
+mem_set(_sin_table, 85, 996);
+mem_set(_sin_table, 86, 998);
+mem_set(_sin_table, 87, 999);
+mem_set(_sin_table, 88, 1000);
+mem_set(_sin_table, 89, 1000);
+
+// fp_sin(deg) -> sin(deg) * 1000, handles all 360 degrees
+fn fp_sin(deg) {
+    // Normalize to 0..359
+    let d = deg;
+    while (d < 0) {
+        d = d + 360;
+    }
+    while (d > 359) {
+        d = d - 360;
+    }
+    if (d < 90) {
+        return mem_get(_sin_table, d);
+    }
+    if (d < 180) {
+        return mem_get(_sin_table, 180 - d);
+    }
+    if (d < 270) {
+        return 0 - mem_get(_sin_table, d - 180);
+    }
+    return 0 - mem_get(_sin_table, 360 - d);
+}
+
+// fp_cos(deg) -> cos(deg) * 1000
+fn fp_cos(deg) {
+    return fp_sin(deg + 90);
+}
+
+// fp_mul(a, b) -> (a * b) / 1000  (fixed point multiply)
+fn fp_mul(a, b) {
+    return (a * b) / 1000;
+}
+
+// fp_abs(a) -> absolute value
+fn fp_abs(a) {
+    if (a < 0) {
+        return 0 - a;
+    }
+    return a;
+}

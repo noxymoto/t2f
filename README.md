@@ -1,9 +1,5 @@
-# t2f
-linux scripting language that compiles to asm. written in go
 
-# T2F
-
-T2F is an experimental compiled language that emits native assembly directly.
+T2F (time 2 fly) is an experimental compiled language that emits native assembly directly.
 
 It is designed around a few simple ideas:
 

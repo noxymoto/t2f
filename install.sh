@@ -1,7 +1,7 @@
 #!/bin/sh
 set -e
 
-URL="https://github.com/noxymoto/t2f/releases/download/linux-x64-pret2f-compiler/t2f"
+URL="https://github.com/noxymoto/t2f/releases/download/linux-x64-pre/t2f"
 
 echo "Downloading t2f compiler..."
 curl -fsSL "$URL" -o /tmp/t2f

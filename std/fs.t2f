@@ -1,0 +1,19 @@
+// t2f Standard Filesystem Library
+// Stage 1: Basic file loading
+
+// fs_load_buffer(path) -> fileSize
+// Loads the entire file into the global file_io_buf.
+// Returns the number of bytes read, or -1 on error.
+// Returns the number of bytes read, or -1 on error.
+fn fs_load_buffer(path) {
+    let fd = fs_open(path);
+    if (fd == -1) {
+        return -1;
+    }
+    
+    let size = fs_read(fd, 65536);
+    fs_close(fd);
+    return size;
+}
+
+// TODO: Add fs_exists, fs_write_buffer, etc.

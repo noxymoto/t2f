@@ -1,14 +1,14 @@
-include "../std/fs.t2f"
+include "std/fs.t2f"
 include "tty.t2f"
 include "readers.t2f"
 
 let user_buf = mem_alloc(128);
 let host_name_buf = mem_alloc(256);
 let host_buf = mem_alloc(256);
-let os_buf = mem_alloc(256);
+let os_buf = mem_alloc(512);
 let os_id_buf = mem_alloc(64);
 let kernel_buf = mem_alloc(256);
-let cpu_buf = mem_alloc(256);
+let cpu_buf = mem_alloc(512);
 let mem_total_buf = mem_alloc(64);
 let mem_avail_buf = mem_alloc(64);
 let battery_cap_buf = mem_alloc(64);
@@ -59,7 +59,7 @@ fn print_color_swatches_light(width) {
     print_bg_block(51, width);  tty_print(" ");
     print_bg_block(21, width);  tty_print(" ");
     print_bg_block(201, width);
-    tty_nl();
+
 }
 
 
@@ -208,94 +208,257 @@ fn print_disk_line() {
     tty_nl();
 }
 
-fn print_penguin_art(line) {
-    tty_accent();
+fn print_penguin_art_ubuntu(line) {
     tty_bold();
-//if (line == 0) { tty_print("          .--.               "); }
-//if (line == 1) { tty_print("         |o_o |              "); }
-//if (line == 2) { tty_print("         |:_/ |              "); }
-//if (line == 3) { tty_print("        //   \\\\             "); }
-//if (line == 4) { tty_print("       (|     | )            "); }
-//if (line == 5) { tty_print("      /|\\\\_ _/|\\\\           "); }
-//if (line == 6) { tty_print("       \\__)=(__/             "); }
-//    if (line == 7) { tty_print("                             "); }
-//    if (line == 8) { tty_print("                               "); }
-//    if (line == 9) { tty_print("                               "); }
-//    if (line == 10) { tty_print("                               "); }
-//    tty_reset();
+    if (line == 0) { tty_print("                             ....             "); }
+    if (line == 1) { tty_print("              \x1b[38;5;202m.\x27,:clooo:  \x1b[37m.:looooo:.          "); }
+    if (line == 2) { tty_print("           \x1b[38;5;202m.;looooooooc  \x1b[37m.oooooooooo\x27         "); }
+    if (line == 3) { tty_print("        \x1b[38;5;202m.;looooool:,\x27\x27.  \x1b[37m:ooooooooooc         "); }
+    if (line == 4) { tty_print("       \x1b[38;5;202m;looool;.         \x1b[37m\x27oooooooooo,         "); }
+    if (line == 5) { tty_print("      \x1b[38;5;202m;clool\x27             \x1b[37m.cooooooc.  \x1b[38;5;202m,,      "); }
+    if (line == 6) { tty_print("         \x1b[38;5;202m...                \x1b[37m......  \x1b[38;5;202m.:oo,     "); }
+    if (line == 7) { tty_print("  \x1b[37m.;clol:,.                        \x1b[38;5;202m.loooo\x27    "); }
+    if (line == 8) { tty_print(" \x1b[37m:ooooooooo,                        \x1b[38;5;202m\x27ooool    "); }
+    if (line == 9) { tty_print("\x1b[37m\x27ooooooooooo.                        \x1b[38;5;202mloooo.   "); }
+    if (line == 10) { tty_print("\x1b[37m\x27ooooooooool                         \x1b[38;5;202mcoooo.   "); }
+    if (line == 11) { tty_print(" \x1b[37m,loooooooc.                        \x1b[38;5;202m.loooo.   "); }
+    if (line == 12) { tty_print("   \x1b[37m.,;;;\x27.                          \x1b[38;5;202m;ooooc    "); }
+    if (line == 13) { tty_print("       \x1b[38;5;202m...                         \x1b[38;5;202m,ooool.    "); }
+    if (line == 14) { tty_print("    \x1b[38;5;202m.cooooc.              \x1b[37m..\x27,,\x27.  \x1b[38;5;202m.cooo.     "); }
+    if (line == 15) { tty_print("      \x1b[38;5;202m;ooooo:.           \x1b[37m;oooooooc.  \x1b[38;5;202m:l.      "); }
+    if (line == 16) { tty_print("       \x1b[38;5;202m.coooooc,..      \x1b[37mcoooooooooo.          "); }
+    if (line == 17) { tty_print("         \x1b[38;5;202m.:ooooooolc:. \x1b[37m.ooooooooooo\x27          "); }
+    if (line == 18) { tty_print("           \x1b[38;5;202m.\x27:loooooo;  \x1b[37m,oooooooooc           "); }
+    if (line == 19) { tty_print("               \x1b[38;5;202m..\x27;::c\x27  \x1b[37m.;loooo:\x27            "); }
+    tty_reset();
 }
 
-fn print_logo_line(line) {
-    print_penguin_art(line);
+fn print_penguin_art_debian(line) {
+    tty_bold();
+    if (line == 0) { tty_print("        \x1b[38;5;202m_,met$$$$$$$$$$gg.                "); }
+    if (line == 1) { tty_print("     ,g$$$$$$$$$$$$$$$$$$$$$.             "); }
+    if (line == 2) { tty_print("   ,g$$$$P\x22\x22       \x22\x22\x22Y$$$$.\x22.            "); }
+    if (line == 3) { tty_print("  ,$$$$P\x27              \x60$$$$$$.           "); }
+    if (line == 4) { tty_print("\x27,$$$$P       ,ggs.     \x60$$$$b:           "); }
+    if (line == 5) { tty_print("\x60d$$$$\x27     ,$P\x22\x27   \x1b[37m.\x1b[38;5;202m    $$$$$$           "); }
+    if (line == 6) { tty_print(" $$$$P      d$\x27     \x1b[37m,\x1b[38;5;202m    $$$$P            "); }
+    if (line == 7) { tty_print(" $$$$:      $$$.   \x1b[37m-\x1b[38;5;202m    ,d$$$$\x27           "); }
+    if (line == 8) { tty_print(" $$$$;      Y$b._   _,d$P\x27                "); }
+    if (line == 9) { tty_print(" Y$$$$.    \x1b[37m\x60.\x1b[38;5;202m\x60\x22Y$$$$$$$$P\x22\x27               "); }
+    if (line == 10) { tty_print(" \x60$$$$b      \x1b[37m\x22-.__                        "); }
+    if (line == 11) { tty_print("  \x1b[38;5;202m\x60Y$$$$b                                 "); }
+    if (line == 12) { tty_print("   \x60Y$$$$.                                "); }
+    if (line == 13) { tty_print("     \x60$$$$b.                               "); }
+    if (line == 14) { tty_print("       \x60Y$$$$b.                           "); }
+    if (line == 15) { tty_print("         \x60\x22Y$$b._                         "); }
+    if (line == 16) { tty_print("             \x60\x22\x22\x22\x22                        "); }
+    tty_reset();
+}
+
+fn print_penguin_art_mint(line) {
+    tty_bold();
+    if (line == 0) { tty_print("             \x1b[0m\x1b[38;5;202m...-:::::-...\x1b[0m                  "); }
+    if (line == 1) { tty_print("          .-MMMMMMMMMMMMMMM-.\x1b[0m               "); }
+    if (line == 2) { tty_print("      .-MMMM\x1b[0m\x1b[37m\x60..-:::::::-..\x60\x1b[0m\x1b[38;5;202mMMMM-.\x1b[0m           "); }
+    if (line == 3) { tty_print("    .:MMMM\x1b[0m\x1b[37m.:MMMMMMMMMMMMMMM:.\x1b[0m\x1b[38;5;202mMMMM:.\x1b[0m         "); }
+    if (line == 4) { tty_print("   -MMM\x1b[0m\x1b[37m-M---MMMMMMMMMMMMMMMMMMM.\x1b[0m\x1b[38;5;202mMMM-\x1b[0m        "); }
+    if (line == 5) { tty_print("  :MMM\x1b[0m\x1b[37m:MM\x60  :MMMM:....::-...-MMMM:\x1b[0m\x1b[38;5;202mMMM:\x1b[0m      "); }
+    if (line == 6) { tty_print(" :MMM\x1b[0m\x1b[37m:MMM\x60  :MM:\x60  \x60\x60    \x60\x60  \x60:MMM:\x1b[0m\x1b[38;5;202mMMM:\x1b[0m     "); }
+    if (line == 7) { tty_print(".MMM\x1b[0m\x1b[37m.MMMM\x60  :MM.  -MM.  .MM-  \x60MMMM.\x1b[0m\x1b[38;5;202mMMM.\x1b[0m    "); }
+    if (line == 8) { tty_print(":MMM\x1b[0m\x1b[37m:MMMM\x60  :MM.  -MM-  .MM:  \x60MMMM-\x1b[0m\x1b[38;5;202mMMM:\x1b[0m    "); }
+    if (line == 9) { tty_print(":MMM\x1b[0m\x1b[37m:MMMM\x60  :MM.  -MM-  .MM:  \x60MMMM:\x1b[0m\x1b[38;5;202mMMM:\x1b[0m    "); }
+    if (line == 10) { tty_print(":MMM\x1b[0m\x1b[37m:MMMM\x60  :MM.  -MM-  .MM:  \x60MMMM-\x1b[0m\x1b[38;5;202mMMM:\x1b[0m    "); }
+    if (line == 11) { tty_print(".MMM\x1b[0m\x1b[37m.MMMM\x60  :MM:--:MM:--:MM:  \x60MMMM.\x1b[0m\x1b[38;5;202mMMM.\x1b[0m    "); }
+    if (line == 12) { tty_print(" :MMM\x1b[0m\x1b[37m:MMM-  \x60-MMMMMMMMMMMM-\x60  -MMM-\x1b[0m\x1b[38;5;202mMMM:\x1b[0m     "); }
+    if (line == 13) { tty_print("  :MMM\x1b[0m\x1b[37m:MMM:\x60                \x60:MMM:\x1b[0m\x1b[38;5;202mMMM:\x1b[0m      "); }
+    if (line == 14) { tty_print("   .MMM\x1b[0m\x1b[37m.MMMM:--------------:MMMM.\x1b[0m\x1b[38;5;202mMMM.\x1b[0m       "); }
+    if (line == 15) { tty_print("     \x27-MMMM\x1b[0m\x1b[37m.-MMMMMMMMMMMMMMM-.\x1b[0m\x1b[38;5;202mMMMM-\x27\x1b[0m        "); }
+    if (line == 16) { tty_print("       \x27.-MMMM\x1b[0m\x1b[37m\x60\x60--:::::--\x60\x60\x1b[0m\x1b[38;5;202mMMMM-.\x27\x1b[0m          "); }
+    if (line == 17) { tty_print("            \x27-MMMMMMMMMMMMM-\x27\x1b[0m               "); }
+    if (line == 18) { tty_print("               \x60\x60-:::::-\x60\x60\x1b[0m                  "); }
+    tty_reset();
+}
+
+fn print_penguin_art_fedora(line) {
+    tty_bold();
+    if (line == 0) { tty_print("             .\x27,;::::;,\x27.                "); }
+    if (line == 1) { tty_print("         .\x27;:cccccccccccc:;,.            "); }
+    if (line == 2) { tty_print("      .;cccccccccccccccccccccc;.         "); }
+    if (line == 3) { tty_print("    .:cccccccccccccccccccccccccc:.       "); }
+    if (line == 4) { tty_print("  .;ccccccccccccc;\x1b[38;5;202m.:dddl:.\x1b[37m;ccccccc;.     "); }
+    if (line == 5) { tty_print(" .:ccccccccccccc;\x1b[38;5;202mOWMKOOXMWd\x1b[37m;ccccccc:.    "); }
+    if (line == 6) { tty_print(".:ccccccccccccc;\x1b[38;5;202mKMMc\x1b[37m;cc;\x1b[38;5;202mxMMc\x1b[37m;ccccccc:.   "); }
+    if (line == 7) { tty_print(",cccccccccccccc;\x1b[38;5;202mMMM.\x1b[37m;cc;\x1b[38;5;202m;WW:\x1b[37m;cccccccc,   "); }
+    if (line == 8) { tty_print(":cccccccccccccc;\x1b[38;5;202mMMM.\x1b[37m;cccccccccccccccc:   "); }
+    if (line == 9) { tty_print(":ccccccc;\x1b[38;5;202moxOOOo\x1b[37m;\x1b[38;5;202mMMM000k.\x1b[37m;cccccccccccc:   "); }
+    if (line == 10) { tty_print("cccccc;\x1b[38;5;202m0MMKxdd:\x1b[37m;\x1b[38;5;202mMMMkddc.\x1b[37m;cccccccccccc;   "); }
+    if (line == 11) { tty_print("ccccc;\x1b[38;5;202mXMO\x27\x1b[37m;cccc;\x1b[38;5;202mMMM.\x1b[37m;cccccccccccccccc\x27   "); }
+    if (line == 12) { tty_print("ccccc;\x1b[38;5;202mMMo\x1b[37m;ccccc;\x1b[38;5;202mMMW.\x1b[37m;ccccccccccccccc;    "); }
+    if (line == 13) { tty_print("ccccc;\x1b[38;5;202m0MNc.\x1b[37mccc\x1b[38;5;202m.xMMd\x1b[37m;ccccccccccccccc;     "); }
+    if (line == 14) { tty_print("cccccc;\x1b[38;5;202mdNMWXXXWM0:\x1b[37m;cccccccccccccc:,      "); }
+    if (line == 15) { tty_print("cccccccc;\x1b[38;5;202m.:odl:.\x1b[37m;cccccccccccccc:,.       "); }
+    if (line == 16) { tty_print("ccccccccccccccccccccccccccccc:\x27.         "); }
+    if (line == 17) { tty_print(":ccccccccccccccccccccccc:;,..            "); }
+    if (line == 18) { tty_print(" \x27:cccccccccccccccc::;,.                 "); }
+    tty_reset();
+}
+
+fn print_penguin_art_generic(line) {
+    tty_bold();
+    if (line == 0) { tty_print("MMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM   "); }
+    if (line == 1) { tty_print("MMMMWKkxkKWMMMMMMMMMMMMMMMMMMMMWKkxkKWMM   "); }
+    if (line == 2) { tty_print("MMMMXo. .;xKWMMMMMMMMMMMMMMMMMMXo. .oXMM   "); }
+    if (line == 3) { tty_print("MMWXx,..\x27..oXMMMMMMMMMMMMMMMMWKx,  .lXMM   "); }
+    if (line == 4) { tty_print("MMNo. .cOc.,xKWMMMMMMMMMMMMWXx;.....cXMM   "); }
+    if (line == 5) { tty_print("MMXl..;kKl. .oXMMMMMMMMMMWKx;..,ok:.\x27o0W   "); }
+    if (line == 6) { tty_print("WKx,.cKWNk;..lXMMMMMMMMWKx;..,o0NXl. .oN   "); }
+    if (line == 7) { tty_print("No. .lXMMWKc.,dKWMMMMMMNo..;d0NWMNx,..lX   "); }
+    if (line == 8) { tty_print("Nk:,:kNMMMNk:,ckNMMMMMMNxcxXWMMMMMN0ockN   "); }
+    if (line == 9) { tty_print("MWNNNWMMMMMWNNNWMMMMMMMMWWWMMMMMMMMMWWWM   "); }
+    if (line == 10) { tty_print("MMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM   "); }
+    if (line == 11) { tty_print("MMMMMMMNXKXNWMMMMMMMMMMMWNKOKWMMMMMMMMMM   "); }
+    if (line == 12) { tty_print("MMMMMMWKdccxXMMMMMMMMMMW0o\x27.oXMMMMMMMMMM   "); }
+    if (line == 13) { tty_print("MMMMMMMNO:.\x27o0NKkkkkkOXXo. .lXMMMMMMMMMM   "); }
+    if (line == 14) { tty_print("MMMMMMMMNx,..;o;.    .:o,..;kNMMMMMMMMMM   "); }
+    if (line == 15) { tty_print("MMMMMMMMMNO:     ...     .cKWMMMMMMMMMMM   "); }
+    if (line == 16) { tty_print("MMMMMMMMMMNx,. .;dk:.   .;kNMMMMMMMMMMMM   "); }
+    if (line == 17) { tty_print("MMMMMMMMMMMN0ocxXWNkl:,:xXWMMMMMMMMMMMMM   "); }
+    if (line == 18) { tty_print("MMMMMMMMMMMMMWNWMMMWWNNNWMMMMMMMMMMMMMMM   "); }
+    if (line == 19) { tty_print("MMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM   "); }
+    tty_reset();
+}
+
+fn print_penguin_art_arch(line) {
+    tty_bold();
+    if (line == 0) { tty_print("                  -\x60\x1b[0m                     "); }
+    if (line == 1) { tty_print("                 .o+\x60\x1b[0m                    "); }
+    if (line == 2) { tty_print("                \x60ooo/\x1b[0m                    "); }
+    if (line == 3) { tty_print("               \x60+oooo:\x1b[0m                   "); }
+    if (line == 4) { tty_print("              \x60+oooooo:\x1b[0m                  "); }
+    if (line == 5) { tty_print("              -+oooooo+:\x1b[0m                 "); }
+    if (line == 6) { tty_print("            \x60/:-:++oooo+:\x1b[0m                "); }
+    if (line == 7) { tty_print("           \x60/++++/+++++++:\x1b[0m               "); }
+    if (line == 8) { tty_print("          \x60/++++++++++++++:\x1b[0m              "); }
+    if (line == 9) { tty_print("         \x60/+++o\x1b[0m\x1b[38;5;202moooooooo\x1b[0m\x1b[37moooo/\x60\x1b[0m            "); }
+    if (line == 10) { tty_print("        ./\x1b[0m\x1b[38;5;202mooosssso++osssssso\x1b[0m\x1b[37m+\x60\x1b[0m           "); }
+    if (line == 11) { tty_print("\x1b[0m\x1b[38;5;202m       .oossssso-\x60\x60\x60\x60/ossssss+\x60\x1b[0m          "); }
+    if (line == 12) { tty_print("      -osssssso.      :ssssssso.\x1b[0m         "); }
+    if (line == 13) { tty_print("     :osssssss/        osssso+++.\x1b[0m        "); }
+    if (line == 14) { tty_print("    /ossssssss/        +ssssooo/-\x1b[0m        "); }
+    if (line == 15) { tty_print("  \x60/ossssso+/:-        -:/+osssso+-\x1b[0m      "); }
+    if (line == 16) { tty_print(" \x60+sso+:-\x60                 \x60.-/+oso:\x1b[0m     "); }
+    if (line == 17) { tty_print("\x60++:.                           \x60-/+/\x1b[0m    "); }
+    if (line == 18) { tty_print(".\x60                                 \x60/\x1b[0m    "); }
+    tty_reset();
+    return 19;
+}
+
+fn print_penguin_art_kali(line) {
+    tty_bold();
+    if (line == 0) { tty_print("..............\x1b[0m                                      "); }
+    if (line == 1) { tty_print("            ..,;:ccc,.\x1b[0m                              "); }
+    if (line == 2) { tty_print("          ......\x27\x27\x27;lxO.\x1b[0m                            "); }
+    if (line == 3) { tty_print(".....\x27\x27\x27\x27..........,:ld;\x1b[0m                            "); }
+    if (line == 4) { tty_print("           .\x27;;;:::;,,.x,\x1b[0m                           "); }
+    if (line == 5) { tty_print("      ..\x27\x27\x27.            0Xxoc:,.  ...\x1b[0m               "); }
+    if (line == 6) { tty_print("  ....                ,ONkc;,;cokOdc\x27,.\x1b[0m             "); }
+    if (line == 7) { tty_print(" .                   OMo           \x27:\x1b[0m\x1b[38;5;202mdd\x1b[0m\x1b[37mo.\x1b[0m           "); }
+    if (line == 8) { tty_print("                    dMc               :OO;\x1b[0m          "); }
+    if (line == 9) { tty_print("                    0M.                 .:o.\x1b[0m        "); }
+    if (line == 10) { tty_print("                    ;Wd\x1b[0m                             "); }
+    if (line == 11) { tty_print("                     ;XO,\x1b[0m                           "); }
+    if (line == 12) { tty_print("                       ,d0Odlc;,..\x1b[0m                  "); }
+    if (line == 13) { tty_print("                           ..\x27,;:cdOOd::,.\x1b[0m          "); }
+    if (line == 14) { tty_print("                                    .:d;.\x27:;.\x1b[0m       "); }
+    if (line == 15) { tty_print("                                       \x27d,  .\x27\x1b[0m      "); }
+    if (line == 16) { tty_print("                                         ;l   ..\x1b[0m    "); }
+    if (line == 17) { tty_print("                                          .o\x1b[0m        "); }
+    if (line == 18) { tty_print("                                            c\x1b[0m       "); }
+    if (line == 19) { tty_print("                                            .\x27\x1b[0m      "); }
+    if (line == 20) { tty_print("                                             .\x1b[0m      "); }
+    tty_reset();
+    return 21;
+}
+fn print_logo_line(line, os_buf) {
+    // We check the first few characters of the OS buffer
+    // U = 85 (Ubuntu), D = 68 (Debian), A = 65 (Arch)
+    
+    let first_char = get_byte(os_buf, 0);
+
+    if (first_char == 85) { // 'U' for Ubuntu
+        print_penguin_art_ubuntu(line);
+    } 
+ if (first_char == 68) { // 'D' for Debian
+        print_penguin_art_debian(line);
+    }
+     if (first_char == 70) { // 'F' for Fedora
+        print_penguin_art_fedora(line);
+    }
+
+      if (first_char == 76) { // 'L' for linux mint
+        print_penguin_art_mint(line);
+    }
+
+     if (first_char == 65) { // 'A' for Arch
+        print_penguin_art_arch(line);
+    } 
+
+     if (first_char == 75) { // 'K' for kali
+        print_penguin_art_kali(line);
+    } 
 }
 
 fn print_info_line(line) {
     if (line == 0) {
-        print_indent(0);
+     
         print_header_line();
     }
     if (line == 1) {
-        print_indent(0);
+   
         print_rule();
     }
     if (line == 2) {
-        print_indent(0);
+  
         print_key_value("os", os_buf);
     }
     if (line == 3) {
-        print_indent(0);
+    
         print_key_value("environment", env_buf);
     }
     if (line == 4) {
-        print_indent(0);
         print_key_value("kernel", kernel_buf);
     }
     if (line == 5) {
-        print_indent(0);
         print_key_value("uptime", uptime_buf);
     }
     if (line == 6) {
-        print_indent(0);
         print_key_value("cpu", cpu_buf);
     }
     if (line == 7) {
-        print_indent(0);
         print_key_value("shell", shell_buf);
     }
     if (line == 8) {
-        print_indent(0);
         print_memory_line();
     }
     if (line == 9) {
-        print_indent(0);
+      
         print_disk_line();
     }
     if (line == 10) {
-        print_indent(0);
         print_battery_line();
-     //   tty_nl();
+  
     }
-   
 
     if (line == 11) {
-    tty_nl();
-          print_indent(6);
-        print_color_swatches(4);
-        print_indent(10);
-        print_color_swatches_light(3);
-        print_indent(14);
-        print_color_swatches(2);
-       
-            print_indent(18);
-              print_color_swatches_light(1);
-             print_indent(14);
-               print_color_swatches(2);
-                print_indent(10);
-               print_color_swatches_light(3);
-              
-            print_indent(6);
-               print_color_swatches(4);
-              
+
+        print_str("");
+    }
+
+
+    if (line == 12) {
+        print_color_swatches_light(4);
+      
+
           
     }
 
@@ -341,7 +504,31 @@ if (is_wsl_kernel()) {
 }
 
 let line = 0;
-while (line < 14) {
+let first_char = get_byte(os_buf, 0);
+let a = 30;
+
+    if (first_char == 85) { // 'U' for Ubuntu
+       a = 21;
+
+       //a = 21;
+    } 
+ if (first_char == 68) { // 'D' for Debian
+        a = 17;
+    }
+     if (first_char == 70) { // 'F' for Fedora
+        a = 20;
+    }
+
+       if (first_char == 76) { // 'L' for linux mint
+        a = 19;
+    }
+        if (first_char == 65) { // 'A' for arch linux
+        a = 19;
+    }
+           if (first_char == 75) { // 'K' for kali
+        a = 22;
+    }
+while (line < a) {
     print_logo_line(line);
     print_gap();
     print_info_line(line);
